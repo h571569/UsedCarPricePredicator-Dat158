@@ -15,3 +15,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install pandas
 ```
+
+
+##Lenke for dokumentet: 
+https://hvl365-my.sharepoint.com/:w:/r/personal/184906_stud_hvl_no/Documents/DAT158_ML_sp.docx?d=waa390cb1d4b94d99932ba5aa8b4de27a&csf=1&web=1&e=UReRgJ
