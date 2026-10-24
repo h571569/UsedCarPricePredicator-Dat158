@@ -2,7 +2,7 @@
 import pandas as pd
 
 # Load in dataset with cp1251 encoding to handle Cyrillic characters
-df = pd.read_csv("data/cars.csv", encoding="cp1251")
+df = pd.read_csv("data/original_cars.csv", encoding="cp1251")
 
 def translate_cyrillic_to_english(df):
 
@@ -63,25 +63,44 @@ def translate_cyrillic_to_english(df):
 
     return df
 
+def remove_duplicates(df):
+
+    df = df.copy()
+
+    before = df.lenght
+
+    df = df.drop_duplicates()
+
+    removed = before - df.lenght
+    print(f"Removed {removed} duplicate rows")
+
+    return df
+
 def remove_invalid_prices(df):
 
     df = df.copy()
+
+
 
     return df
 
 
 def main():
     df = pd.read_csv(
-        "data/cars.csv",
+        "data/original_cars.csv",
         encoding="cp1251")
 
     df = translate_cyrillic_to_english(df)
 
-    #df invalid prices
+    df = remove_duplicates(df)
 
-    #df missing valeus
+    # df missing valeus
 
-    #df duplicates
+    # Save the cleaned dataset to a new CSV file
+    # this file contins price = 0 which we will run through our model later and
+    # set a predictive price for those cars
+
+    # df invalid prices
 
     df.to_csv(
         "data/cars_translated.csv",
