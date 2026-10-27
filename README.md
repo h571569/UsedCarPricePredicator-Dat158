@@ -65,3 +65,4 @@ and add its link here.
 - Website framework: [Streamlit documentation](https://docs.streamlit.io/).
 
 Mileage is recorded in thousands: `68` means 68,000.
+Dataset prices are in USD. The website displays NOK using a fixed conversion rate from 22 October 2026.

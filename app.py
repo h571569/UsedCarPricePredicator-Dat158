@@ -7,6 +7,10 @@ import streamlit as st
 from model_training import DATA_DIR, MODEL_PATH
 
 
+# Usd to Nok rate from 22 October 2026.
+USD_TO_NOK = 9.3601
+
+
 @st.cache_resource
 def load_model():
     """Load the saved pipeline once, without retraining it."""
@@ -92,8 +96,10 @@ def main():
             "model": car_model,
             "drive": drive,
         }])
-        prediction = float(model.predict(inputs)[0])
-        st.metric("Estimated price", f"{prediction:,.0f}")
+        prediction_usd = float(model.predict(inputs)[0])
+        prediction_nok = prediction_usd * USD_TO_NOK
+        formatted_price = f"{prediction_nok:,.0f}".replace(",", " ")
+        st.metric("Estimated price", f"{formatted_price} NOK")
 
 
 if __name__ == "__main__":
