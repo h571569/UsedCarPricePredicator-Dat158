@@ -1,10 +1,14 @@
+from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
-# Load in dataset with cp1251 encoding to handle Cyrillic characters
-df = pd.read_csv("data/original_cars.csv", encoding="cp1251")
+
+DATA_DIR = Path(__file__).resolve().parent / "data"
+
 
 def translate_cyrillic_to_english(df):
+    """Translate known Cyrillic labels without changing the input dataframe."""
 
     df = df.copy()
 
@@ -64,46 +68,81 @@ def translate_cyrillic_to_english(df):
     return df
 
 def remove_duplicates(df):
+    """Keep the first occurrence of each exact full-row duplicate."""
 
-    df = df.copy()
+    before = len(df)
+    df = df.drop_duplicates().copy()
 
-    before = df.lenght
-
-    df = df.drop_duplicates()
-
-    removed = before - df.lenght
+    removed = before - len(df)
     print(f"Removed {removed} duplicate rows")
 
     return df
 
-def remove_invalid_prices(df):
 
-    df = df.copy()
-
-
-
+def remove_engine_volume_column(df):
+    """Count missing engine volumes, then remove the column."""
+    print(f"Rows missing engV: {df['engV'].isna().sum()}")
+    df = df.drop(columns=["engV"])
     return df
 
 
+def fill_missing_drive(df):
+    """Replace missing drive values with the category unknown."""
+    df = df.copy()
+    missing = df["drive"].isna().sum()
+    df["drive"] = df["drive"].fillna("unknown")
+    print(f"Filled {missing} missing drive values with unknown")
+    return df
+
+
+def valid_price_mask(df):
+    """A usable observed price must be numeric, finite, and greater than zero."""
+    prices = pd.to_numeric(df["price"], errors="coerce")
+    return prices.notna() & np.isfinite(prices) & prices.gt(0)
+
+
+def remove_invalid_prices(df):
+    """Exclude unusable target prices from data intended for model development."""
+    bad_rows = df[~valid_price_mask(df)].index
+    cleaned = df.drop(bad_rows)
+    cleaned["price"] = pd.to_numeric(cleaned["price"])
+    print(f"Excluded {len(df) - len(cleaned)} rows without a valid price")
+    return cleaned
+
+
 def main():
+    """Save translated data, valid-price data, and rows for later prediction."""
     df = pd.read_csv(
-        "data/original_cars.csv",
+        DATA_DIR / "original_cars.csv",
         encoding="cp1251")
 
     df = translate_cyrillic_to_english(df)
 
+    df = remove_engine_volume_column(df)
+
     df = remove_duplicates(df)
 
-    # df missing valeus
-
-    # Save the cleaned dataset to a new CSV file
-    # this file contins price = 0 which we will run through our model later and
-    # set a predictive price for those cars
-
-    # df invalid prices
+    df = fill_missing_drive(df)
 
     df.to_csv(
-        "data/cars_translated.csv",
+        DATA_DIR / "cars_translated.csv",
         index=False,
         encoding="utf-8")
 
+    # These rows have no usable target. Keep them for later predictions,
+    # separate from model training and evaluation.
+    without_prices = df.loc[~valid_price_mask(df)].copy()
+    without_prices.to_csv(
+        DATA_DIR / "cars_without_prices.csv", index=False, encoding="utf-8")
+
+    cleaned = remove_invalid_prices(df)
+    cleaned.to_csv(
+        DATA_DIR / "cars_cleaned.csv", index=False, encoding="utf-8")
+
+    print(f"Saved {len(df)} translated, deduplicated rows")
+    print(f"Saved {len(cleaned)} rows with valid prices")
+    print(f"Saved {len(without_prices)} rows for later prediction")
+
+
+if __name__ == "__main__":
+    main()
