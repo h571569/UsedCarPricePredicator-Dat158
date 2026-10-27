@@ -111,7 +111,7 @@ def remove_invalid_prices(df):
 
 
 def main():
-    """Save translated data, valid-price data, and rows for later prediction."""
+    """Clean the original data and save rows with and without usable prices."""
     df = pd.read_csv(
         DATA_DIR / "original_cars.csv",
         encoding="cp1251")
@@ -124,11 +124,6 @@ def main():
 
     df = fill_missing_drive(df)
 
-    df.to_csv(
-        DATA_DIR / "cars_translated.csv",
-        index=False,
-        encoding="utf-8")
-
     # These rows have no usable target. Keep them for later predictions,
     # separate from model training and evaluation.
     without_prices = df.loc[~valid_price_mask(df)].copy()
@@ -139,7 +134,6 @@ def main():
     cleaned.to_csv(
         DATA_DIR / "cars_cleaned.csv", index=False, encoding="utf-8")
 
-    print(f"Saved {len(df)} translated, deduplicated rows")
     print(f"Saved {len(cleaned)} rows with valid prices")
     print(f"Saved {len(without_prices)} rows for later prediction")
 
