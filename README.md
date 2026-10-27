@@ -41,17 +41,25 @@ RMSE on held-out test data, and saves the fitted pipeline to
 For plots and a step-by-step walkthrough, open
 `notebooks/data_exploration.ipynb` and run all cells.
 
+Generate a separate CSV of the cars without prices, filled with model estimates in USD:
+
+```sh
+python predict_prices.py
+```
+
 ## Important files
 
 - `app.py`: simple Streamlit website for predicting a car's price.
 - `requirements.txt`: package versions for installation.
 - `data_cleaning.py`: cleans the data and separates rows by price validity.
 - `model_training.py`: trains, compares, evaluates, and saves the model.
+- `predict_prices.py`: fills missing prices using the saved model.
 - `notebooks/data_exploration.ipynb`: data exploration, plots, and model results.
 - `testing.py`: checks the cleaned training data for duplicates.
 - `data/original_cars.csv`: original dataset.
 - `data/cars_cleaned.csv`: cleaned data for training.
 - `data/cars_without_prices.csv`: cleaned rows for later prediction.
+- `data/cars_with_predicted_prices.csv`: the same cars with estimated prices in USD, kept separate from training data.
 - `models/car_price_pipeline.joblib`: saved model and preprocessing.
 
 For the final submission, deploy the website or record a demonstration video
