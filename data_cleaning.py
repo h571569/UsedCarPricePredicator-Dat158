@@ -124,8 +124,6 @@ def main():
 
     df = fill_missing_drive(df)
 
-    # These rows have no usable target. Keep them for later predictions,
-    # separate from model training and evaluation.
     without_prices = df.loc[~valid_price_mask(df)].copy()
     without_prices.to_csv(
         DATA_DIR / "cars_without_prices.csv", index=False, encoding="utf-8")

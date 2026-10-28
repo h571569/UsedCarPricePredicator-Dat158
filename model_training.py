@@ -21,8 +21,6 @@ def split_data(df):
     X = df.drop(columns=["price"])
     y = df["price"]
 
-    # Split before fitting preprocessing steps or models.
-    # random_state makes the split repeatable for the same dataset.
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
     )
@@ -74,7 +72,6 @@ def create_random_forest_model():
 
 def validate_model(model, X_train, y_train):
     """Evaluate a pipeline on the same five folds of training data."""
-    # Use five shuffled folds and a fixed seed for repeatable validation.
     cv = KFold(n_splits=5, shuffle=True, random_state=42)
     scores = cross_validate(
         model,
@@ -86,8 +83,6 @@ def validate_model(model, X_train, y_train):
         error_score="raise",
     )
 
-    # Scikit-learn returns negative error scores. Convert them to positive errors.
-    # Its "test" keys refer to validation folds, not our held-out test set.
     fold_results = pd.DataFrame({
         "fold": range(1, 6),
         "training_MAE": -scores["train_MAE"],
@@ -115,7 +110,6 @@ def validate_random_forest(X_train, y_train):
 
 def tune_random_forest(X_train, y_train):
     """Search tree settings using training data."""
-    # Try nine combinations of tree depth and minimum leaf size.
     param_grid = {
         "regressor__max_depth": [None, 20, 40],
         "regressor__min_samples_leaf": [1, 2, 5],
@@ -129,10 +123,8 @@ def tune_random_forest(X_train, y_train):
         refit="MAE",
         return_train_score=True,
         error_score="raise",
-        verbose=1,
     )
-    # The complete pipeline is fitted separately within each fold.
-    # refit="MAE" then fits the selected pipeline on all training rows.
+
     grid_search.fit(X_train, y_train)
     return grid_search
 
@@ -174,63 +166,26 @@ def main():
     df = pd.read_csv(DATA_DIR / "cars_cleaned.csv")
     X_train, X_test, y_train, y_test = split_data(df)
 
-    print(f"Input features: {X_train.columns.tolist()}")
-    print(f"Training rows: {len(X_train)}; training prices: {len(y_train)}")
-    print(f"Test rows: {len(X_test)}; test prices: {len(y_test)}")
-
-    model = create_model()
-    model.fit(X_train, y_train)
-    print("Linear regression trained.")
-
-    feature_names = model.named_steps["preprocessor"].get_feature_names_out()
-    print(f"Prepared input features: {len(feature_names)}")
-
-    examples = X_train[["car", "model", "year", "mileage"]].head().copy()
-    examples["actual_price"] = y_train.head()
-    examples["predicted_price"] = model.predict(X_train.head())
-    print("Example predictions for training cars (not validation results):")
-    print(examples.round(2).to_string(index=False))
-
+    print("Comparing models with five-fold cross-validation...")
     fold_results = validate_linear_regression(X_train, y_train)
-    print("Linear regression: five-fold cross-validation on training data")
-    print(fold_results.round(2).to_string(index=False))
-    print("Mean errors across the five folds:")
-    print(fold_results.drop(columns=["fold"]).mean().round(2).to_string())
-
     tree_fold_results = validate_decision_tree(X_train, y_train)
-    print("Decision tree: five-fold cross-validation on training data")
-    print(tree_fold_results.round(2).to_string(index=False))
-
     forest_fold_results = validate_random_forest(X_train, y_train)
-    print("Random forest: five-fold cross-validation on training data")
-    print(forest_fold_results.round(2).to_string(index=False))
 
     comparison = pd.DataFrame({
         "Linear regression": fold_results.drop(columns=["fold"]).mean(),
         "Decision tree": tree_fold_results.drop(columns=["fold"]).mean(),
         "Random forest": forest_fold_results.drop(columns=["fold"]).mean(),
     }).T
-    print("Mean cross-validation errors by model:")
+    print("Mean cross-validation errors by model (USD):")
     print(comparison.round(2).to_string())
 
+    print("Tuning random forest...")
     grid_search = tune_random_forest(X_train, y_train)
-    grid_results = summarize_tuning(grid_search)
-    print("Random forest tuning: mean errors across five folds")
-    print(grid_results.round(2).to_string(index=False))
     print(f"Selected settings: {grid_search.best_params_}")
-    tuned_errors = grid_results.loc[grid_search.best_index_, comparison.columns].astype(float)
-    tuning_comparison = pd.DataFrame({
-        "Initial random forest": comparison.loc["Random forest"],
-        "Selected random forest": tuned_errors,
-    }).T
-    print("Initial and selected settings (cross-validation errors):")
-    print(tuning_comparison.round(2).to_string())
-    print(f"Selected pipeline refitted on all {len(X_train)} training rows.")
 
-    # Model selection is finished before the held-out test data is evaluated.
     best_model = grid_search.best_estimator_
-    test_predictions, test_results = evaluate_final_model(best_model, X_test, y_test)
-    print(f"Final evaluation on {len(X_test)} held-out test rows:")
+    _, test_results = evaluate_final_model(best_model, X_test, y_test)
+    print(f"Final evaluation on {len(X_test)} held-out test rows (USD):")
     print(test_results.round(2).to_string())
 
     save_pipeline(best_model)
