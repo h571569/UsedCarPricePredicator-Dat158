@@ -71,6 +71,11 @@ def main():
                 "Registered", ["yes", "no"], format_func=str.capitalize
             )
         with right:
+            unknown_volume = st.checkbox("Engine volume unknown", value=False)
+            engine_volume = st.number_input(
+                "Engine volume (litres)", min_value=0.1, max_value=8.0,
+                value=2.0, step=0.1, disabled=unknown_volume,
+            )
             mileage_km = st.number_input(
                 "Mileage (km)",
                 min_value=0,
@@ -90,6 +95,7 @@ def main():
             "car": manufacturer,
             "body": body,
             "mileage": mileage_km / 1000,
+            "engV": float("nan") if unknown_volume else engine_volume,
             "engType": fuel,
             "registration": registration,
             "year": year,

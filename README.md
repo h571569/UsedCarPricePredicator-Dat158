@@ -1,7 +1,7 @@
 # Used Car Price Prediction - DAT158
 
 A machine learning project that estimates used car prices. We compare linear
-regression, decision tree, and random forest models.
+regression, a decision tree, and previous and tuned random forests with engine volume.
 
 ## Setup
 
@@ -56,6 +56,13 @@ python analyze_validation_errors.py
 The output includes all training cars and their details, actual prices, predictions,
 and errors. `source_row` identifies the row in `cars_cleaned.csv`, including its header.
 Each car is predicted while excluded from training; the final test set stays separate.
+
+Cleaning retains engine volume (`engV`) and removes rows above 8 litres. Missing
+volumes remain in the CSV and are filled with the training median inside each
+pipeline. The normal training script compares both forest versions, searches 13
+configurations by validation MAE, evaluates the selected model, and saves it.
+It also reports the percentage of predictions within 20% of actual price.
+The app accepts engine volume or lets the saved pipeline fill an unknown value.
 
 ## Important files
 

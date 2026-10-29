@@ -68,10 +68,10 @@ def translate_cyrillic_to_english(df):
     return df
 
 def remove_duplicates(df):
-    """Keep the first occurrence of each exact full-row duplicate."""
+    """Keep the original duplicate keys, excluding engine volume."""
 
     before = len(df)
-    df = df.drop_duplicates().copy()
+    df = df.drop_duplicates(subset=df.columns.drop("engV").tolist()).copy()
 
     removed = before - len(df)
     print(f"Removed {removed} duplicate rows")
@@ -79,11 +79,13 @@ def remove_duplicates(df):
     return df
 
 
-def remove_engine_volume_column(df):
-    """Count missing engine volumes, then remove the column."""
-    print(f"Rows missing engV: {df['engV'].isna().sum()}")
-    df = df.drop(columns=["engV"])
-    return df
+def clean_engine_volume(df):
+    """Exclude engines above 8 litres; leave missing sizes for the pipeline."""
+    df = df.copy()
+    df["engV"] = pd.to_numeric(df["engV"], errors="coerce")
+    too_large = df["engV"].gt(8)
+    print(f"Removed {too_large.sum()} rows with engV above 8 litres")
+    return df.loc[~too_large].copy()
 
 
 def fill_missing_drive(df):
@@ -118,9 +120,9 @@ def main():
 
     df = translate_cyrillic_to_english(df)
 
-    df = remove_engine_volume_column(df)
-
     df = remove_duplicates(df)
+
+    df = clean_engine_volume(df)
 
     df = fill_missing_drive(df)
 

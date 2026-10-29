@@ -1,11 +1,13 @@
 from pathlib import Path
 
 import joblib
+import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_absolute_error, root_mean_squared_error
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import make_scorer, mean_absolute_error, root_mean_squared_error
 from sklearn.model_selection import GridSearchCV, KFold, cross_validate, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -29,12 +31,16 @@ def split_data(df):
 
 
 def create_preprocessor():
-    """Set up numeric scaling and categorical encoding."""
-    numeric_features = ["mileage", "year"]
+    """Set up training-only median filling, scaling, and category encoding."""
+    numeric_features = ["mileage", "year", "engV"]
     categorical_features = ["car", "body", "engType", "registration", "model", "drive"]
 
+    numeric_pipeline = Pipeline([
+        ("imputer", SimpleImputer(strategy="median")),
+        ("scaler", StandardScaler()),
+    ])
     preprocessor = ColumnTransformer([
-        ("numeric", StandardScaler(), numeric_features),
+        ("numeric", numeric_pipeline, numeric_features),
         ("categorical", OneHotEncoder(handle_unknown="ignore"), categorical_features),
     ])
 
@@ -70,6 +76,28 @@ def create_random_forest_model():
     return model
 
 
+def create_tuned_random_forest_model():
+    """Use the settings selected in the earlier engV tuning experiment."""
+    return create_random_forest_model().set_params(
+        regressor__n_estimators=300,
+        regressor__max_features=0.5,
+        regressor__max_depth=30,
+        regressor__min_samples_leaf=1,
+    )
+
+
+def within_twenty_percent(actual, predicted):
+    """Fraction of estimates within 20% of the observed positive price."""
+    return np.mean(np.abs(predicted - actual) <= 0.2 * actual)
+
+
+SCORING = {
+    "MAE": "neg_mean_absolute_error",
+    "RMSE": "neg_root_mean_squared_error",
+    "within20": make_scorer(within_twenty_percent),
+}
+
+
 def validate_model(model, X_train, y_train):
     """Evaluate a pipeline on the same five folds of training data."""
     cv = KFold(n_splits=5, shuffle=True, random_state=42)
@@ -78,7 +106,7 @@ def validate_model(model, X_train, y_train):
         X_train,
         y_train,
         cv=cv,
-        scoring={"MAE": "neg_mean_absolute_error", "RMSE": "neg_root_mean_squared_error"},
+        scoring=SCORING,
         return_train_score=True,
         error_score="raise",
     )
@@ -89,6 +117,7 @@ def validate_model(model, X_train, y_train):
         "validation_MAE": -scores["test_MAE"],
         "training_RMSE": -scores["train_RMSE"],
         "validation_RMSE": -scores["test_RMSE"],
+        "validation_within20_percent": 100 * scores["test_within20"],
     })
     return fold_results
 
@@ -110,19 +139,32 @@ def validate_random_forest(X_train, y_train):
 
 def tune_random_forest(X_train, y_train):
     """Search tree settings using training data."""
-    param_grid = {
-        "regressor__max_depth": [None, 20, 40],
-        "regressor__min_samples_leaf": [1, 2, 5],
-    }
+    # Twelve structures plus the 300-tree candidate from the earlier experiment.
+    param_grid = [
+        {
+            "regressor__n_estimators": [100],
+            "regressor__max_features": ["sqrt", 0.5, 1.0],
+            "regressor__max_depth": [None, 30],
+            "regressor__min_samples_leaf": [1, 2],
+        },
+        {
+            "regressor__n_estimators": [300],
+            "regressor__max_features": [0.5],
+            "regressor__max_depth": [30],
+            "regressor__min_samples_leaf": [1],
+        },
+    ]
     cv = KFold(n_splits=5, shuffle=True, random_state=42)
     grid_search = GridSearchCV(
         create_random_forest_model(),
         param_grid=param_grid,
         cv=cv,
-        scoring={"MAE": "neg_mean_absolute_error", "RMSE": "neg_root_mean_squared_error"},
+        scoring=SCORING,
         refit="MAE",
         return_train_score=True,
         error_score="raise",
+        n_jobs=2,
+        pre_dispatch=2,
     )
 
     grid_search.fit(X_train, y_train)
@@ -133,12 +175,15 @@ def summarize_tuning(grid_search):
     """Show each setting combination and its mean training/validation errors."""
     scores = grid_search.cv_results_
     grid_results = pd.DataFrame({
+        "n_estimators": scores["param_regressor__n_estimators"],
+        "max_features": scores["param_regressor__max_features"],
         "max_depth": pd.Series(scores["param_regressor__max_depth"], dtype=object),
         "min_samples_leaf": scores["param_regressor__min_samples_leaf"],
         "training_MAE": -scores["mean_train_MAE"],
         "validation_MAE": -scores["mean_test_MAE"],
         "training_RMSE": -scores["mean_train_RMSE"],
         "validation_RMSE": -scores["mean_test_RMSE"],
+        "validation_within20_percent": 100 * scores["mean_test_within20"],
     })
     grid_results["max_depth"] = grid_results["max_depth"].fillna("unlimited")
     return grid_results.sort_values("validation_MAE")
@@ -150,6 +195,7 @@ def evaluate_final_model(model, X_test, y_test):
     test_results = pd.DataFrame({
         "MAE": [mean_absolute_error(y_test, test_predictions)],
         "RMSE": [root_mean_squared_error(y_test, test_predictions)],
+        "within20_percent": [100 * within_twenty_percent(y_test, test_predictions)],
     }, index=["Held-out test"])
     return test_predictions, test_results
 
@@ -170,13 +216,15 @@ def main():
     fold_results = validate_linear_regression(X_train, y_train)
     tree_fold_results = validate_decision_tree(X_train, y_train)
     forest_fold_results = validate_random_forest(X_train, y_train)
+    tuned_fold_results = validate_model(create_tuned_random_forest_model(), X_train, y_train)
 
     comparison = pd.DataFrame({
         "Linear regression": fold_results.drop(columns=["fold"]).mean(),
         "Decision tree": tree_fold_results.drop(columns=["fold"]).mean(),
-        "Random forest": forest_fold_results.drop(columns=["fold"]).mean(),
+        "Random forest with engV": forest_fold_results.drop(columns=["fold"]).mean(),
+        "Tuned random forest with engV": tuned_fold_results.drop(columns=["fold"]).mean(),
     }).T
-    print("Mean cross-validation errors by model (USD):")
+    print("Mean cross-validation results (price errors in USD, within20 in %):")
     print(comparison.round(2).to_string())
 
     print("Tuning random forest...")
