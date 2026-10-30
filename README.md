@@ -87,7 +87,7 @@ and add its link here.
 
 - Dataset: [Car Sale Advertisements on Kaggle](https://www.kaggle.com/datasets/antfarol/car-sale-advertisements).
 - Original data: `data/original_cars.csv`.
-- [Project report (shared document)](https://hvl365-my.sharepoint.com/:w:/r/personal/184906_stud_hvl_no/Documents/DAT158_ML_sp.docx?d=waa390cb1d4b94d99932ba5aa8b4de27a&csf=1&web=1&e=UReRgJ).
+- Project report: [Project report (shared document)](https://hvl365-my.sharepoint.com/:w:/r/personal/184906_stud_hvl_no/Documents/DAT158_ML_sp.docx?d=waa390cb1d4b94d99932ba5aa8b4de27a&csf=1&web=1&e=UReRgJ).
 - Website framework: [Streamlit documentation](https://docs.streamlit.io/).
 - Gjennomgang nettside :
 
