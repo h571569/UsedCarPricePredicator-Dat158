@@ -89,6 +89,11 @@ and add its link here.
 - Original data: `data/original_cars.csv`.
 - [Project report (shared document)](https://hvl365-my.sharepoint.com/:w:/r/personal/184906_stud_hvl_no/Documents/DAT158_ML_sp.docx?d=waa390cb1d4b94d99932ba5aa8b4de27a&csf=1&web=1&e=UReRgJ).
 - Website framework: [Streamlit documentation](https://docs.streamlit.io/).
+- Gjennomgang nettside :
+
+https://github.com/user-attachments/assets/fb909e5c-3316-4a5f-9e7a-173c898fcd27
+
+
 
 Mileage is recorded in thousands: `68` means 68,000.
 Dataset prices are in USD. The website displays NOK using a fixed conversion rate from 22 October 2026.
